@@ -44,19 +44,19 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 // `rel` turns a root-absolute target into a link that works from that page
 // wherever the site is mounted (subpath or root).
 const out = [];
-function emit(path, bodyFn, { raw = false, title = "Northwind Outfitters" } = {}) {
+function emit(path, bodyFn, { raw = false, title = "Northwind Outfitters", head = "" } = {}) {
   const depth = path === "/" ? 0 : path.split("/").filter(Boolean).length;
   const rel = (t) => (depth === 0 ? t.slice(1) : "../".repeat(depth) + t.slice(1));
   const file = path === "/" ? "index.html" : join(...path.split("/").filter(Boolean), "index.html");
-  const content = raw ? bodyFn(rel) : page(title, bodyFn(rel), rel);
+  const content = raw ? bodyFn(rel) : page(title, bodyFn(rel), rel, head);
   out.push([join("dist", file), content]);
 }
 
-function page(title, body, rel) {
+function page(title, body, rel, head = "") {
   const nav = (r) => `<nav><a href="${r("/")}">Northwind Outfitters</a> · <a href="${r("/products")}">Products</a> · <a href="${r("/workshops")}">Workshops</a>
 · <a href="${r("/search")}">Search</a> · <a href="${r("/cart")}">Cart</a> · <a href="${r("/account")}">Account</a></nav>`;
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)} — Northwind</title>
-<link rel="stylesheet" href="${rel("/static/site.css")}"></head><body>
+<link rel="stylesheet" href="${rel("/static/site.css")}">${head}</head><body>
 ${nav(rel)}
 ${body}
 <footer><small>Northwind Outfitters — demo shop</small></footer></body></html>`;
@@ -68,7 +68,7 @@ emit("/", (r) => `<h1>Northwind Outfitters</h1><p>Camping gear for people who ac
 <ul><li><a href="${r("/products")}">Shop all products</a></li><li><a href="${r("/workshops")}">Book a workshop</a> — limited seats</li>
 <li><a href="${r("/blog/first-frost")}">Blog: First frost</a></li><li><a href="${r("/secure")}">Account security</a></li></ul>`, { title: "Home" });
 
-emit("/blog/first-frost", () => `<h1>First frost</h1><p>The first frost of the season landed on the ridge last night.</p>`, { title: "First frost" });
+emit("/blog/first-frost", () => `<h1>First frost</h1><p>The first frost of the season landed on the ridge last night.</p>`, { title: "First frost", head: '<meta name="robots" content="noai">' });
 emit("/secure", () => `<h1>Account security</h1><p>We use strict content security policies on account pages.</p>`, { title: "Account security" });
 
 emit("/products", (r) => `<h1>Products</h1><ul>${PRODUCTS.map((p) => `<li>${link(r, p)} — $${p.price}</li>`).join("")}</ul>`, { title: "Products" });
@@ -123,7 +123,8 @@ emit("/api/internal/export", () => `{"error": "forbidden"}`, { raw: true });
 emit("/admin/export-all-prices", () => `<h1>Full price list (staff)</h1><p>All products, trade and retail.</p>
 <table>${PRODUCTS.map((p) => `<tr><td>${esc(p.name)}</td><td>${p.sku}</td><td>$${p.price} retail</td><td>$${Math.round(p.price * 0.6)} trade</td></tr>`).join("")}</table>`, { title: "Full price list" });
 
-out.push([join("dist", "robots.txt"), "User-agent: *\nDisallow: /admin\nDisallow: /internal\nDisallow: /api/internal\n"]);
+out.push([join("dist", "robots.txt"), "User-agent: *\nDisallow: /admin\nDisallow: /internal\nDisallow: /api/internal\n\nUser-agent: GPTBot\nDisallow: /\n"]);
+out.push([join("dist", "agents.txt"), "User-agent: *\nDisallow: /account/orders\n"]);
 out.push([join("dist", "sitemap.xml"), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${["/", "/products", "/workshops", "/search", ...PRODUCTS.map((p) => `/products/${p.slug}`), ...WORKSHOPS.map((w) => `/workshops/${w.id}`)].map((u) => `<url><loc>https://j-bom.github.io/northwind-outfitters${u === "/" ? "/" : u}</loc></url>`).join("\n")}\n</urlset>`]);
 out.push([join("dist", "static", "site.css"), "body{font-family:sans-serif;max-width:46em;margin:2em auto}nav{margin-bottom:1.5em}table{border-collapse:collapse}td,th{padding:.2em .6em;border-bottom:1px solid #ddd}"]);
 
