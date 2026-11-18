@@ -1,7 +1,0 @@
-User-agent: *
-Disallow: /admin
-Disallow: /internal
-Disallow: /api/internal
-
-User-agent: GPTBot
-Disallow: /
